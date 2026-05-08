@@ -1,0 +1,119 @@
+# ------------------------------------------------------------
+# PYTHON
+# ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+*.cover
+coverage.xml
+nosetests.xml
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# mypy / type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+
+# ------------------------------------------------------------
+# ENVIRONMENT & SECRETS — NEVER commit these
+# ------------------------------------------------------------
+.env
+.env.*
+!.env.example        # .env.example SHOULD be committed
+
+
+# ------------------------------------------------------------
+# FLASK SPECIFIC
+# ------------------------------------------------------------
+instance/
+*.db
+*.sqlite3
+flask_session/
+
+
+# ------------------------------------------------------------
+# PYCHARM (JetBrains)
+# ------------------------------------------------------------
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea_modules/
+
+
+# ------------------------------------------------------------
+# VS CODE
+# ------------------------------------------------------------
+.vscode/
+*.code-workspace
+.history/
+
+
+# ------------------------------------------------------------
+# OPERATING SYSTEM
+# ------------------------------------------------------------
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.Trash-*
+
+
+# ------------------------------------------------------------
+# LOGS & TEMP FILES
+# ------------------------------------------------------------
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+logs/
