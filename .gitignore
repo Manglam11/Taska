@@ -49,7 +49,6 @@ dmypy.json
 # ENVIRONMENT & SECRETS — NEVER commit these
 # ------------------------------------------------------------
 .env
-.env.*
 !.env.example        # .env.example SHOULD be committed
 
 # ------------------------------------------------------------
