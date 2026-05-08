@@ -1,4 +1,5 @@
-from app import create_app, socketio
+from app import create_app, socketio,models, db
+from flask_migrate import Migrate
 
 app = create_app()
 
