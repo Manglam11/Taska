@@ -1,5 +1,6 @@
 from flask import request, jsonify
 from flask_login import login_required, current_user
+from flask_socketio import emit
 from app.tasks import tasks_bp
 from app import db
 from app.models import Task
@@ -29,7 +30,8 @@ def create_task():
     new_task = Task(user_id = user_id, title=title, priority=priority, description=description, status=status)
     db.session.add(new_task)
     db.session.commit()
-
+    from app import socketio
+    socketio.emit("task_updated", {"action":"created", "task": new_task.to_dict()})
     return jsonify({"status": "success","data": new_task.to_dict(), "message": "Task created successfully."}), 201
 
 
@@ -66,6 +68,8 @@ def update_task(id):
         task.description = data["description"]
 
     db.session.commit()
+    from app import socketio
+    socketio.emit("task_updated", {"action":"updated", "task": task.to_dict()})
     return jsonify({"status":"success", "data": task.to_dict(), "message": "Task updated successfully"}), 200
 
 @tasks_bp.route("/tasks/<int:id>", methods=["DELETE"])
@@ -81,5 +85,7 @@ def delete_task(id):
 
     db.session.delete(task)
     db.session.commit()
+    from app import socketio
+    socketio.emit("task_updated", {"action":"deleted", "task_id": id})
     return jsonify({"status":"success", "message": "Task deleted successfully"}), 200
 
