@@ -1,10 +1,104 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Sign up — Taska{% endblock %}
 
-</body>
-</html>
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-card">
+
+    <div class="auth-header">
+      <img src="{{ url_for('static', filename='images/icon.svg') }}" width="52" height="52" alt="Taska"/>
+      <h1>Create account</h1>
+      <p>Start managing your tasks today</p>
+    </div>
+
+    <div class="msg-error"   id="error-msg"></div>
+    <div class="msg-success" id="success-msg"></div>
+
+    <div class="form-group">
+      <label for="name">Full name</label>
+      <input type="text" id="name" placeholder="Manglam" autocomplete="name"/>
+    </div>
+
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="you@example.com" autocomplete="email"/>
+    </div>
+
+    <div class="form-group">
+      <label for="password">Password <span style="color:#9ca3af;font-weight:400">(min 6 chars)</span></label>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="new-password"/>
+    </div>
+
+    <button class="btn-primary" id="register-btn">Create account</button>
+
+    <div class="auth-footer">
+      Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const registerBtn = document.getElementById('register-btn');
+  const errorMsg    = document.getElementById('error-msg');
+  const successMsg  = document.getElementById('success-msg');
+
+  function showError(msg) {
+    successMsg.style.display = 'none';
+    errorMsg.textContent     = msg;
+    errorMsg.style.display   = 'block';
+  }
+
+  function showSuccess(msg) {
+    errorMsg.style.display     = 'none';
+    successMsg.textContent     = msg;
+    successMsg.style.display   = 'block';
+  }
+
+  async function register() {
+    const name     = document.getElementById('name').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    errorMsg.style.display   = 'none';
+    successMsg.style.display = 'none';
+
+    if (!name || !email || !password) { showError('All fields are required.'); return; }
+    if (password.length < 6)          { showError('Password must be at least 6 characters.'); return; }
+
+    registerBtn.textContent = 'Creating account…';
+    registerBtn.disabled    = true;
+
+    try {
+      const res  = await fetch('/auth/register', {
+        method:      'POST',
+        credentials: 'include',
+        headers:     { 'Content-Type': 'application/json' },
+        body:        JSON.stringify({ name, email, password })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        showSuccess('Account created! Redirecting to login…');
+        setTimeout(() => { window.location.href = '/auth/login'; }, 1500);
+      } else {
+        showError(data.message || 'Registration failed. Try again.');
+        registerBtn.textContent = 'Create account';
+        registerBtn.disabled    = false;
+      }
+    } catch {
+      showError('Network error. Check your connection.');
+      registerBtn.textContent = 'Create account';
+      registerBtn.disabled    = false;
+    }
+  }
+
+  registerBtn.addEventListener('click', register);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') register();
+  });
+</script>
+{% endblock %}
