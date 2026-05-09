@@ -1,4 +1,4 @@
-from flask import jsonify, send_file
+from flask import jsonify, make_response
 from flask_login import login_required, current_user
 from app.analytics import analytics_bp
 from app.analytics.service import get_task_analytics, get_csv_export
@@ -12,11 +12,13 @@ def get_analytics():
 @analytics_bp.route("/analytics/export", methods=["GET"])
 @login_required
 def get_analytics_report():
-    analytics_buffer = get_csv_export(current_user.id)
+    csv_data = get_csv_export(current_user.id)
 
-    if analytics_buffer is None:
-        return  jsonify({"status": "error", "message": "Can't generate report, data is not enough"}), 404
+    if csv_data is None:
+        return jsonify({"status": "error", "message": "No tasks to export"}), 404
 
-    return send_file(analytics_buffer, mimetype="text/csv", as_attachment=True, download_name="tasks.csv")
-
+    response = make_response(csv_data)
+    response.headers["Content-Disposition"] = "attachment; filename=tasks.csv"
+    response.headers["Content-Type"] = "text/csv; charset=utf-8"
+    return response
 

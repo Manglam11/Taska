@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from app.models import Task
-from io import BytesIO
 
 def _get_user_df(user_id) -> pd.DataFrame | None:
     """
@@ -55,7 +54,7 @@ def get_task_analytics(user_id) -> dict:
     }
 
 
-def get_csv_export(user_id) -> BytesIO | None:
+def get_csv_export(user_id) -> str | None:
     """
     Converts DataFrame to CSV.
     &
@@ -74,7 +73,4 @@ def get_csv_export(user_id) -> BytesIO | None:
     df = _get_user_df(user_id)
     if df is None:
         return None
-    buffer = BytesIO()
-    df.to_csv(buffer, index=False, encoding="utf-8")
-    buffer.seek(0)
-    return buffer
+    return df.to_csv(index=False)
