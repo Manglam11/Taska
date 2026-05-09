@@ -1,10 +1,304 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Dashboard — Taska{% endblock %}
 
-</body>
-</html>
+{% block content %}
+
+<!-- Analytics cards -->
+<div class="analytics-grid">
+  <div class="analytics-card">
+    <div class="label">Total tasks</div>
+    <div class="value" id="stat-total">—</div>
+  </div>
+  <div class="analytics-card highlight">
+    <div class="label">Completed</div>
+    <div class="value" id="stat-completed">—</div>
+  </div>
+  <div class="analytics-card">
+    <div class="label">Pending</div>
+    <div class="value" id="stat-pending">—</div>
+  </div>
+  <div class="analytics-card">
+    <div class="label">In progress</div>
+    <div class="value" id="stat-inprogress">—</div>
+  </div>
+</div>
+
+<!-- Form + Chart row -->
+<div class="dashboard-row">
+
+  <!-- Add task form -->
+  <div class="card">
+    <div class="section-title">Add a task</div>
+    <div class="msg-error" id="form-error"></div>
+
+    <div class="form-group">
+      <label for="task-title">Title</label>
+      <input type="text" id="task-title" placeholder="What needs to be done?"/>
+    </div>
+    <div class="form-group">
+      <label for="task-desc">Description</label>
+      <textarea id="task-desc" placeholder="Optional details…"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="task-priority">Priority</label>
+      <select id="task-priority">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="task-status">Status</label>
+      <select id="task-status">
+        <option value="pending" selected>Pending</option>
+        <option value="in_progress">In progress</option>
+        <option value="completed">Completed</option>
+      </select>
+    </div>
+    <button class="btn-primary" id="add-task-btn">Add task</button>
+  </div>
+
+  <!-- Doughnut chart -->
+  <div class="card">
+    <div class="section-title">Completion overview</div>
+    <div class="chart-wrapper">
+      <canvas id="taskChart"></canvas>
+    </div>
+    <div style="text-align:center;margin-top:0.75rem;font-size:13px;color:#6b7280">
+      <span id="completion-pct">—</span>% complete
+    </div>
+  </div>
+
+</div>
+
+<!-- Task list -->
+<div class="section-title">Your tasks</div>
+<div class="task-list" id="task-list">
+  <div class="empty-state">Loading tasks…</div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let taskChart = null;
+
+  function priorityBadge(p) {
+    return `<span class="badge badge-${p}">${p}</span>`;
+  }
+
+  function statusBadge(s) {
+    const label = s === 'in_progress' ? 'In progress'
+                : s === 'completed'   ? 'Completed'
+                : 'Pending';
+    return `<span class="badge badge-${s}">${label}</span>`;
+  }
+
+  /* ── Render task list ── */
+  function renderTasks(tasks) {
+    const list = document.getElementById('task-list');
+    if (!tasks.length) {
+      list.innerHTML = '<div class="empty-state">No tasks yet. Add one above.</div>';
+      return;
+    }
+    list.innerHTML = tasks.map(task => `
+      <div class="task-item" id="task-${task.id}">
+        <div class="task-info">
+          <div class="task-title">${escapeHtml(task.title)}</div>
+          ${task.description ? `<div class="task-desc">${escapeHtml(task.description)}</div>` : ''}
+          <div class="task-meta">
+            ${priorityBadge(task.priority)}
+            ${statusBadge(task.status)}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn-edit"   onclick="startEdit(${task.id}, '${escapeAttr(task.title)}', '${escapeAttr(task.description || '')}', '${task.priority}', '${task.status}')">Edit</button>
+          <button class="btn-delete" onclick="deleteTask(${task.id})">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  /* ── Inline edit: replace task card with a mini form ── */
+  function startEdit(id, title, description, priority, status) {
+    const item = document.getElementById(`task-${id}`);
+    item.innerHTML = `
+      <div style="width:100%">
+        <div class="form-group" style="margin-bottom:8px">
+          <input type="text" id="edit-title-${id}" value="${escapeHtml(title)}" style="width:100%"/>
+        </div>
+        <div class="form-group" style="margin-bottom:8px">
+          <textarea id="edit-desc-${id}" style="width:100%;min-height:56px">${escapeHtml(description)}</textarea>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <select id="edit-priority-${id}" style="flex:1">
+            <option value="low"    ${priority==='low'    ?'selected':''}>Low</option>
+            <option value="medium" ${priority==='medium' ?'selected':''}>Medium</option>
+            <option value="high"   ${priority==='high'   ?'selected':''}>High</option>
+          </select>
+          <select id="edit-status-${id}" style="flex:1">
+            <option value="pending"     ${status==='pending'     ?'selected':''}>Pending</option>
+            <option value="in_progress" ${status==='in_progress' ?'selected':''}>In progress</option>
+            <option value="completed"   ${status==='completed'   ?'selected':''}>Completed</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-primary" style="width:auto;padding:6px 18px" onclick="saveEdit(${id})">Save</button>
+          <button class="btn-delete"  onclick="loadTasks()">Cancel</button>
+        </div>
+      </div>
+    `;
+  }
+
+  /* ── Save edited task ── */
+  async function saveEdit(id) {
+    const title       = document.getElementById(`edit-title-${id}`).value.trim();
+    const description = document.getElementById(`edit-desc-${id}`).value.trim();
+    const priority    = document.getElementById(`edit-priority-${id}`).value;
+    const status      = document.getElementById(`edit-status-${id}`).value;
+
+    if (!title) { alert('Title cannot be empty.'); return; }
+
+    try {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method:      'PUT',
+        credentials: 'include',
+        headers:     { 'Content-Type': 'application/json' },
+        body:        JSON.stringify({ title, description, priority, status })
+      });
+      if (res.ok) {
+        await Promise.all([loadTasks(), loadAnalytics()]);
+      }
+    } catch { alert('Failed to save. Try again.'); }
+  }
+
+  /* ── Analytics ── */
+  function renderAnalytics(data) {
+    document.getElementById('stat-total').textContent      = data.total;
+    document.getElementById('stat-completed').textContent  = data.completed;
+    document.getElementById('stat-pending').textContent    = data.pending;
+    document.getElementById('stat-inprogress').textContent = data.in_progress;
+    document.getElementById('completion-pct').textContent  = data.completion_percentage;
+
+    const ctx = document.getElementById('taskChart').getContext('2d');
+    const chartData = {
+      labels: ['Completed', 'In progress', 'Pending'],
+      datasets: [{
+        data: [data.completed, data.in_progress, data.pending],
+        backgroundColor: ['#1D9E75', '#3B82F6', '#E5E7EB'],
+        borderWidth: 0,
+        hoverOffset: 6
+      }]
+    };
+    if (taskChart) {
+      taskChart.data = chartData;
+      taskChart.update();
+    } else {
+      taskChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: chartData,
+        options: {
+          cutout: '68%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { font: { size: 12 }, padding: 16, boxWidth: 12 }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  async function loadTasks() {
+    try {
+      const res  = await fetch('/api/tasks', { credentials: 'include' });
+      const data = await res.json();
+      if (res.ok) renderTasks(data.data);
+    } catch {
+      document.getElementById('task-list').innerHTML =
+        '<div class="empty-state">Could not load tasks.</div>';
+    }
+  }
+
+  async function loadAnalytics() {
+    try {
+      const res  = await fetch('/api/analytics', { credentials: 'include' });
+      const data = await res.json();
+      if (res.ok) renderAnalytics(data.data);
+    } catch {}
+  }
+
+  async function addTask() {
+    const title       = document.getElementById('task-title').value.trim();
+    const description = document.getElementById('task-desc').value.trim();
+    const priority    = document.getElementById('task-priority').value;
+    const status      = document.getElementById('task-status').value;
+    const errorDiv    = document.getElementById('form-error');
+    const btn         = document.getElementById('add-task-btn');
+
+    errorDiv.style.display = 'none';
+    if (!title) { errorDiv.textContent = 'Title is required.'; errorDiv.style.display = 'block'; return; }
+
+    btn.textContent = 'Adding…';
+    btn.disabled    = true;
+
+    try {
+      const res  = await fetch('/api/tasks', {
+        method:      'POST',
+        credentials: 'include',
+        headers:     { 'Content-Type': 'application/json' },
+        body:        JSON.stringify({ title, description, priority, status })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('task-title').value    = '';
+        document.getElementById('task-desc').value     = '';
+        document.getElementById('task-priority').value = 'medium';
+        document.getElementById('task-status').value   = 'pending';
+        await Promise.all([loadTasks(), loadAnalytics()]);
+      } else {
+        errorDiv.textContent   = data.message || 'Failed to add task.';
+        errorDiv.style.display = 'block';
+      }
+    } catch {
+      errorDiv.textContent   = 'Network error.';
+      errorDiv.style.display = 'block';
+    } finally {
+      btn.textContent = 'Add task';
+      btn.disabled    = false;
+    }
+  }
+
+  async function deleteTask(id) {
+    try {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: 'DELETE', credentials: 'include'
+      });
+      if (res.ok) {
+        document.getElementById(`task-${id}`)?.remove();
+        await loadAnalytics();
+        if (!document.querySelector('.task-item')) {
+          document.getElementById('task-list').innerHTML =
+            '<div class="empty-state">No tasks yet. Add one above.</div>';
+        }
+      }
+    } catch {}
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function escapeAttr(str) {
+    return String(str).replace(/'/g, "\\'").replace(/\n/g, ' ');
+  }
+
+  window.onTaskUpdated = function() { loadTasks(); loadAnalytics(); };
+
+  document.getElementById('add-task-btn').addEventListener('click', addTask);
+  loadTasks();
+  loadAnalytics();
+</script>
+{% endblock %}
