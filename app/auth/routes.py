@@ -1,10 +1,16 @@
 from flask import request, jsonify, redirect, url_for, render_template
 from app import db, bcrypt
 from app.models import User
-from flask_login import login_user, logout_user, login_required
+from flask_login import login_user, logout_user, login_required, current_user
 from app.auth import auth_bp
 
 # auth_bp = Blueprint("auth", __name__)
+
+@auth_bp.route('/')
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('auth.dashboard'))
+    return redirect(url_for('auth.login'))
 
 @auth_bp.route("/auth/register", methods=["GET", "POST"])
 def register():
@@ -62,3 +68,8 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for("auth.login"))
+
+@auth_bp.route('/dashboard')
+@login_required
+def dashboard():
+    return render_template('dashboard.html')
