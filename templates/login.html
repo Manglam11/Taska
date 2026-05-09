@@ -1,10 +1,86 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Login — Taska{% endblock %}
 
-</body>
-</html>
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-card">
+
+    <div class="auth-header">
+      <img src="{{ url_for('static', filename='images/icon.svg') }}" width="52" height="52" alt="Taska"/>
+      <h1>Welcome back</h1>
+      <p>Log in to manage your tasks</p>
+    </div>
+
+    <div class="msg-error" id="error-msg"></div>
+
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" placeholder="you@example.com" autocomplete="email"/>
+    </div>
+
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+
+    <button class="btn-primary" id="login-btn">Log in</button>
+
+    <div class="auth-footer">
+      Don't have an account? <a href="{{ url_for('auth.register') }}">Sign up</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const loginBtn = document.getElementById('login-btn');
+  const errorMsg = document.getElementById('error-msg');
+
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.style.display = 'block';
+  }
+
+  async function login() {
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    errorMsg.style.display = 'none';
+
+    if (!email || !password) { showError('Both fields are required.'); return; }
+
+    loginBtn.textContent = 'Logging in…';
+    loginBtn.disabled    = true;
+
+    try {
+      const res  = await fetch('/auth/login', {
+        method:      'POST',
+        credentials: 'include',
+        headers:     { 'Content-Type': 'application/json' },
+        body:        JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        window.location.href = '/dashboard';
+      } else {
+        showError(data.message || 'Login failed. Try again.');
+        loginBtn.textContent = 'Log in';
+        loginBtn.disabled    = false;
+      }
+    } catch {
+      showError('Network error. Check your connection.');
+      loginBtn.textContent = 'Log in';
+      loginBtn.disabled    = false;
+    }
+  }
+
+  loginBtn.addEventListener('click', login);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') login();
+  });
+</script>
+{% endblock %}
