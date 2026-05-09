@@ -11,7 +11,7 @@ db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 bcrypt = Bcrypt()
-socketio = SocketIO()
+socketio = SocketIO(cors_allowed_origins="*")
 
 
 def create_app(config_class=Config):
@@ -23,7 +23,7 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     login_manager.init_app(app)
     bcrypt.init_app(app)
-    socketio.init_app(app)
+    socketio.init_app(app, cors_allowed_origins="*")
 
     # Tell Flask-Login where to redirect unauthenticated users
     login_manager.login_view = 'auth.login'
@@ -32,6 +32,9 @@ def create_app(config_class=Config):
     from app.auth import auth_bp
     from app.tasks import tasks_bp
     from app.analytics import analytics_bp
+    from app.sockets.events import register_socket_events
+
+    register_socket_events(socketio)
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(tasks_bp)
